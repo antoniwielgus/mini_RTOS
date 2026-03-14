@@ -10,6 +10,7 @@ BUILD_DIR = .build
 # C sources
 C_SOURCES += main.c
 C_SOURCES += osKernal.c
+C_SOURCES += Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
 # ASM sources
 ASM_SOURCES += startup_stm32f429zitx.s
 ASM_SOURCES += osKernelAsm.s
