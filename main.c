@@ -53,6 +53,5 @@ void SysTick_Handler(void)
 void Delay(uint32_t ms)
 {
   uint32_t start = msTicks;
-  while ((msTicks - start) < ms)
-    ;
+  while ((msTicks - start) < ms);
 }
