@@ -4,8 +4,13 @@
 #define __ASM __asm
 #endif
 
-#define NUM_OF_THREADS 3
-#define STACK_SIZE 100
+
+#define BUS_FREQ            16000000
+uint32_t MILLIS_PRESCALLER;
+
+
+#define NUM_OF_THREADS      3
+#define STACK_SIZE          100
 
 struct tcb // Thread Control Block
 {
@@ -49,9 +54,15 @@ uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task
     osKernelStackInit(2);
     TCB_STACK[2][STACK_SIZE - 2] = (int32_t)(task2);
 
-    currentPt = &tcbs[0];
+    currentPt = &tcbs[0]; // Set currentPt as first thread
 
     __ASM volatile("cpsie i" : : : "memory"); // Enable interrupt
 
     return 1;
+}
+
+void nnOsKernelInit(void)
+{
+    __ASM volatile ("cpsid i" : : : "memory"); // Disable interrupt
+    MILLIS_PRESCALLER = (BUS_FREQ / 1000);
 }
