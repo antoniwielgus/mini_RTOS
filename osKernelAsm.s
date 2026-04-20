@@ -1,6 +1,10 @@
 .section .text
 .cpu cortex-m4
 .syntax unified
+
+.extern osTick
+.extern osScheduler
+
 .global currentPt
 .global SysTick_Handler
 .global nnOsSchedulerLaunch
@@ -12,9 +16,10 @@
 .word nnOsSchedulerLaunch
 
 
+
 @; Context Switcher
 SysTick_Handler:                @; save r0, r1, r2, r3, r12, LR, PC, PSR
-                CPSID       I
+                CPSID       I               @ Disable interrupts
                 PUSH        {R4 - R11}      @; save r4, r5, r6, r7, r8, r9, r10, r11
 
                 @; Odczytaj aktualny wskaznik pod ktorym nalezy umiescic stack pointer
@@ -24,21 +29,27 @@ SysTick_Handler:                @; save r0, r1, r2, r3, r12, LR, PC, PSR
                 @; 2. zapisz aktualny stack pointer do zmiennej "tcbs[i].stackPt"
                 STR         SP, [R1]
 
-                @; odczytaj tcbs[i].stackPt.nextPt
-                LDR         R1, [R1, #4]    @; r1 = currentPt -> next
+                PUSH {LR}
+                BL osTick
+                POP {LR}
 
-                @; przypisz nextPointer jako obecny
-                STR         R1, [R0]        @; currentPt = r1
+                PUSH {LR}
+                BL osScheduler
+                POP {LR}
+
+                LDR R0, =currentPt
+                LDR R1, [R0]
+
 
                 @; zaladuj SP z nextPointer / Aktualny stackPt
                 LDR         SP, [R1]        @;SP = currentPt -> stackPt
 
                 @; przywroc pozostaly kontekst
                 POP         {R4 - R11}
-                CPSIE       I
+                CPSIE       I               @Enable interrupts
 
                 @; reszte zrobi HW
-                BX          LR
+                BX          LR              @Exit interrupt
 
 
 

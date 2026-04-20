@@ -1,4 +1,5 @@
 #include "stdint.h"
+#include "osKernel.h"
 
 
 void nnOsSchedulerLaunch(void);
@@ -32,10 +33,12 @@ uint32_t MILLIS_PRESCALLER;
 #define NUM_OF_THREADS      3
 #define STACK_SIZE          100
 
-struct tcb // Thread Control Block
+struct tcb // Task Control Block
 {
     int32_t *stackPt;
     struct tcb *nexPt;
+    uint32_t delayTicks;
+    TaskState state;          // 0: READY, 1: SLEEPING
 };
 
 typedef struct tcb tcbType;
@@ -54,7 +57,7 @@ void osKernelStackInit(int i)
     // Describe in my theses T byte in ePSR register. It is responsible for Thumb and ARM mode.
 }
 
-tcbType *currentPt;
+volatile tcbType *currentPt;
 
 // Datasheet page 43, order of registers in stack
 uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task2)(void))
@@ -105,3 +108,55 @@ void osThreadYield(void)
     SysTick->VAL = 0;
     INTCTRL = 0x04000000;
 }
+
+void task_delay(uint32_t ticks)
+{
+    __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
+
+    currentPt->delayTicks = ticks;
+    currentPt->state = TASK_SLEEPING;
+
+    __ASM volatile("cpsie i" : : : "memory"); // Enable interrupt
+
+    volatile uint32_t test_ = currentPt->delayTicks;
+
+    
+    // SysTick interrupt
+    osThreadYield();
+}
+
+void osScheduler(void)
+{
+    do 
+    {
+        currentPt = currentPt->nexPt;
+    } while (currentPt->state != TASK_READY);
+}
+
+// This function will: 
+// go ahead through every tasks 
+// decrements delayTicks
+// wakes up tasks
+void osTick(void)
+{
+    tcbType *pt = currentPt;
+
+    do 
+    {
+        if (pt->state == TASK_SLEEPING)
+        {
+            if (pt->delayTicks > 0)
+            {
+                pt->delayTicks--;
+
+                if (pt->delayTicks == 0)
+                {
+                    pt->state = TASK_READY;
+                }
+            }
+        }
+
+        pt = pt->nexPt;
+    } while (pt != currentPt);
+}
+

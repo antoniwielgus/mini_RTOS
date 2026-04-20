@@ -22,6 +22,16 @@ void Task0(void)
   {
     count0++;
     GPIOG->ODR ^= GPIO_ODR_OD13;
+
+    task_delay(10);
+    // osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
   }
 }
 
@@ -31,6 +41,12 @@ void Task1(void)
   {
     count1++;
     GPIOG->ODR ^= GPIO_ODR_OD14;
+
+    task_delay(5);
+    // osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
+		// osThreadYield();
   }
 }
 
@@ -39,6 +55,7 @@ void Task2(void)
   while (1)
   {
     count2++;
+    // osThreadYield();
   }
 }
 
