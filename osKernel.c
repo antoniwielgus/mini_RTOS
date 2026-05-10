@@ -21,7 +21,7 @@ typedef struct
 #define SysTick             ((SysTick_Type  *)  SysTick_BASE)   // SysTick configuration struct
 
 
-#ifndef __ASMz
+#ifndef __ASM
 #define __ASM               __asm
 #endif
 
@@ -59,7 +59,7 @@ void osKernelStackInit(int i)
 
 volatile tcbType *currentPt;
 
-// Datasheet page 43, order of registers in stack
+// PM page 43, order of registers in stack
 uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task2)(void))
 {
     __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
@@ -91,7 +91,7 @@ void nnOsKernelInit(void)
 }
 
 // Interrupt vector (page 40 PM - programming manual)
-void osKernelLaunch(uint32_t quanta) // quanta - how long one threat will work
+void osKernelLaunch(uint32_t quanta) // quanta - how long one threat will work (in ms)
 {
     SysTick->CTRL = 0; // Disable SysTick counter
     SysTick->VAL = 0;
@@ -99,7 +99,7 @@ void osKernelLaunch(uint32_t quanta) // quanta - how long one threat will work
 
     SYSPRI3 = (SYSPRI3&0x00FFFFFF) | 0xE0000000; // System Handler Priority Register (Page 51 - ARM Documentation | PM page 234)
 
-    SysTick->CTRL = 0x00000007;
+    SysTick->CTRL = 0x00000007; // PM page 247
     nnOsSchedulerLaunch();
 }
 
@@ -111,20 +111,18 @@ void osThreadYield(void)
 
 void task_delay(uint32_t ticks)
 {
-    __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
+    __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt (arm_cortexm4 page 34)
 
     currentPt->delayTicks = ticks;
     currentPt->state = TASK_SLEEPING;
 
-    __ASM volatile("cpsie i" : : : "memory"); // Enable interrupt
-
-    volatile uint32_t test_ = currentPt->delayTicks;
-
+    __ASM volatile("cpsie i" : : : "memory"); // Enable interrupt (arm_cortexm4 page 34)
     
     // SysTick interrupt
     osThreadYield();
 }
 
+// This function set currentPt to first ready task
 void osScheduler(void)
 {
     do 
@@ -136,7 +134,7 @@ void osScheduler(void)
 // This function will: 
 // go ahead through every tasks 
 // decrements delayTicks
-// wakes up tasks
+// wakes up the task if time is up
 void osTick(void)
 {
     tcbType *pt = currentPt;
@@ -159,4 +157,3 @@ void osTick(void)
         pt = pt->nexPt;
     } while (pt != currentPt);
 }
-
