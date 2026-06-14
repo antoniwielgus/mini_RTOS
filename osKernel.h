@@ -12,7 +12,7 @@ typedef enum
     TASK_BLOCKED
 } TaskState;
 
-uint8_t osKernelAddThreads(void(*task0)(void), void(*task1)(void), void(*task2)(void));
+uint8_t osKernelAddThreads(void(*task0)(void), void(*task1)(void), void(*task2)(void), void(*idleTask)(void));
 void nnOsKernelInit(void);
 void osKernelLaunch(uint32_t quanta);
 void osThreadYield(void);

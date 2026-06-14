@@ -51,7 +51,15 @@ void Task2(void)
     GPIOG->ODR ^= GPIO_ODR_OD15; // pin toggle
     __ASM volatile("cpsie i" : : : "memory");
 
-    // task_delay(2);
+    task_delay(200);
+  }
+}
+
+void idleTask(void)
+{
+  while(1)
+  {
+    __ASM volatile("wfi"); // Wait For Interrupt
   }
 }
 
@@ -62,7 +70,7 @@ int main(void)
   GPIO_Init();
 
   nnOsKernelInit();
-  osKernelAddThreads(Task0, Task1, Task2);
+  osKernelAddThreads(Task0, Task1, Task2, idleTask);
   osKernelLaunch(1u);
 
   while (1)

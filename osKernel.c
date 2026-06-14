@@ -30,7 +30,7 @@ typedef struct
 uint32_t MILLIS_PRESCALLER;
 
 
-#define NUM_OF_THREADS      3
+#define NUM_OF_THREADS      4
 #define STACK_SIZE          100
 
 struct tcb // Task Control Block
@@ -38,7 +38,7 @@ struct tcb // Task Control Block
     int32_t *stackPt;
     struct tcb *nexPt;
     uint32_t delayTicks;
-    TaskState state;          // 0: READY, 1: SLEEPING
+    TaskState state;          // 0: READY, 1: RUNNING, 2: SLEEPING, 3: BLOCKED
 };
 
 typedef struct tcb tcbType;
@@ -60,13 +60,20 @@ void osKernelStackInit(int i)
 volatile tcbType *currentPt;
 
 // PM page 43, order of registers in stack
-uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task2)(void))
+uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task2)(void), void (*idleTask)(void))
 {
     __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
 
     tcbs[0].nexPt = &tcbs[1];
     tcbs[1].nexPt = &tcbs[2];
-    tcbs[2].nexPt = &tcbs[0];
+    tcbs[2].nexPt = &tcbs[3];
+    tcbs[3].nexPt = &tcbs[0];
+
+    // Initialize all tasks state for READY
+    for (uint8_t i = 0; i < NUM_OF_THREADS; i++)
+    {
+        tcbs[i].state = TASK_READY;
+    }
 
     osKernelStackInit(0);
     TCB_STACK[0][STACK_SIZE - 2] = (int32_t)(task0); // -2 because of register PC (Program Counter) is the secound value from the end of stack
@@ -76,6 +83,9 @@ uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task
 
     osKernelStackInit(2);
     TCB_STACK[2][STACK_SIZE - 2] = (int32_t)(task2);
+
+    osKernelStackInit(3);
+    TCB_STACK[3][STACK_SIZE - 2] = (int32_t)(idleTask);
 
     currentPt = &tcbs[0]; // Set currentPt as first thread
 
