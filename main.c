@@ -21,7 +21,9 @@ void Task0(void)
   while (1)
   {
     count0++;
+    __ASM volatile("cpsid i" : : : "memory");
     GPIOG->ODR ^= GPIO_ODR_OD13; // pin toggle
+    __ASM volatile("cpsie i" : : : "memory");
 
     task_delay(1000);
   }
@@ -32,7 +34,9 @@ void Task1(void)
   while (1)
   {
     count1++;
+    __ASM volatile("cpsid i" : : : "memory");
     GPIOG->ODR ^= GPIO_ODR_OD14; // pin toggle
+    __ASM volatile("cpsie i" : : : "memory");
 
     task_delay(333);
   }
@@ -43,7 +47,9 @@ void Task2(void)
   while (1)
   {
     count2++;
+    __ASM volatile("cpsid i" : : : "memory");
     GPIOG->ODR ^= GPIO_ODR_OD15; // pin toggle
+    __ASM volatile("cpsie i" : : : "memory");
 
     // task_delay(2);
   }

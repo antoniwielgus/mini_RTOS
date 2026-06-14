@@ -132,9 +132,9 @@ void osScheduler(void)
 }
 
 // This function will: 
-// go ahead through every tasks 
+// go ahead through every tasks,
 // decrements delayTicks
-// wakes up the task if time is up
+// and wakes up the task if time is up
 void osTick(void)
 {
     tcbType *pt = currentPt;
