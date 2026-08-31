@@ -14,11 +14,11 @@ typedef struct
     volatile uint32_t LOAD;         // Offset: 0x004 (R/W) SysTick Reload Value Register
     volatile uint32_t VAL;          // Offset: 0x008 (R/W) SysTick Current Value Register
     volatile const uint32_t CALIB;  // Offset: 0x00C (R/ ) SysTick Callibration Register
-} SysTick_Type;
+} SysTickType;
 
 #define SCS_BASE            (0xE000E000UL)                      // System Control Space Base Address
 #define SysTick_BASE        (SCS_BASE + 0x0010UL)               // SysTick Base Address, PM page 246
-#define SysTick             ((SysTick_Type  *)  SysTick_BASE)   // SysTick configuration struct
+#define SysTick             ((SysTickType  *)  SysTick_BASE)   // SysTick configuration struct
 
 
 #ifndef __ASM
@@ -29,8 +29,6 @@ typedef struct
 #define BUS_FREQ            16000000
 uint32_t MILLIS_PRESCALLER;
 
-
-#define NUM_OF_THREADS      4
 #define STACK_SIZE          100
 
 struct tcb // Task Control Block
@@ -60,32 +58,27 @@ void osKernelStackInit(int i)
 volatile tcbType *currentPt;
 
 // PM page 43, order of registers in stack
-uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task2)(void), void (*idleTask)(void))
+uint8_t osKernelAddThreads(TaskFunction* taskArray, uint8_t tasksAmount)
 {
     __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
 
-    tcbs[0].nexPt = &tcbs[1];
-    tcbs[1].nexPt = &tcbs[2];
-    tcbs[2].nexPt = &tcbs[3];
-    tcbs[3].nexPt = &tcbs[0];
+    for (uint8_t i = 0; i < tasksAmount - 1; ++i)
+    {
+        tcbs[i].nexPt = &tcbs[i + 1];
+    }
+    tcbs[tasksAmount - 1].nexPt = &tcbs[0];
 
     // Initialize all tasks state for READY
-    for (uint8_t i = 0; i < NUM_OF_THREADS; i++)
+    for (uint8_t i = 0; i < tasksAmount; i++)
     {
         tcbs[i].state = TASK_READY;
     }
 
-    osKernelStackInit(0);
-    TCB_STACK[0][STACK_SIZE - 2] = (int32_t)(task0); // -2 because of register PC (Program Counter) is the secound value from the end of stack
-
-    osKernelStackInit(1);
-    TCB_STACK[1][STACK_SIZE - 2] = (int32_t)(task1);
-
-    osKernelStackInit(2);
-    TCB_STACK[2][STACK_SIZE - 2] = (int32_t)(task2);
-
-    osKernelStackInit(3);
-    TCB_STACK[3][STACK_SIZE - 2] = (int32_t)(idleTask);
+    for (uint8_t i = 0; i < tasksAmount; ++i)
+    {
+        osKernelStackInit(i);
+        TCB_STACK[i][STACK_SIZE - 2] = (int32_t)(taskArray[i]); // -2 because of register PC (Program Counter) is the secound value from the end of stack
+    }
 
     currentPt = &tcbs[0]; // Set currentPt as first thread
 
@@ -93,6 +86,41 @@ uint8_t osKernelAddThreads(void (*task0)(void), void (*task1)(void), void (*task
 
     return 1;
 }
+
+
+// uint8_t osKernelAddThreads(TaskFunction taskArray, uint8_t tasksAmount)
+// {
+//     __ASM volatile("cpsid i" : : : "memory"); // Disable interrupt
+
+//     tcbs[0].nexPt = &tcbs[1];
+//     tcbs[1].nexPt = &tcbs[2];
+//     tcbs[2].nexPt = &tcbs[3];
+//     tcbs[3].nexPt = &tcbs[0];
+
+//     // Initialize all tasks state for READY
+//     for (uint8_t i = 0; i < NUM_OF_THREADS; i++)
+//     {
+//         tcbs[i].state = TASK_READY;
+//     }
+
+//     osKernelStackInit(0);
+//     TCB_STACK[0][STACK_SIZE - 2] = (int32_t)(task0); // -2 because of register PC (Program Counter) is the secound value from the end of stack
+
+//     osKernelStackInit(1);
+//     TCB_STACK[1][STACK_SIZE - 2] = (int32_t)(task1);
+
+//     osKernelStackInit(2);
+//     TCB_STACK[2][STACK_SIZE - 2] = (int32_t)(task2);
+
+//     osKernelStackInit(3);
+//     TCB_STACK[3][STACK_SIZE - 2] = (int32_t)(idleTask);
+
+//     currentPt = &tcbs[0]; // Set currentPt as first thread
+
+//     __ASM volatile("cpsie i" : : : "memory"); // Enable interrupt
+
+//     return 1;
+// }
 
 void nnOsKernelInit(void)
 {
@@ -147,23 +175,33 @@ void osScheduler(void)
 // and wakes up the task if time is up
 void osTick(void)
 {
+    // GPIOG->ODR |= GPIO_ODR_OD13;
+
     tcbType *pt = currentPt;
 
     do 
     {
         if (pt->state == TASK_SLEEPING)
         {
+            if (pt->delayTicks == 0)
+            {
+                pt->state = TASK_READY;
+            }
+
             if (pt->delayTicks > 0)
             {
                 pt->delayTicks--;
+                // pt->delayTicks = pt->delayTicks;
 
-                if (pt->delayTicks == 0)
-                {
-                    pt->state = TASK_READY;
-                }
+                // if (pt->delayTicks == 0)
+                // {
+                //     pt->state = TASK_READY;
+                // }
             }
         }
 
         pt = pt->nexPt;
     } while (pt != currentPt);
+
+    // GPIOG->ODR &= ~GPIO_ODR_OD13;
 }

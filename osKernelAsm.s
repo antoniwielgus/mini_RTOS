@@ -20,6 +20,12 @@
 @; Context Switcher
 SysTick_Handler:                @; save r0, r1, r2, r3, r12, LR, PC, PSR
                 CPSID       I               @ Disable interrupts
+
+                @ Measure time of context seitch begin
+                @ PUSH {LR}
+                @ BL set_PG13_High
+                @ POP {LR}
+
                 PUSH        {R4 - R11}      @; save r4, r5, r6, r7, r8, r9, r10, r11
 
                 @; Odczytaj aktualny wskaznik pod ktorym nalezy umiescic stack pointer
@@ -46,6 +52,12 @@ SysTick_Handler:                @; save r0, r1, r2, r3, r12, LR, PC, PSR
 
                 @; przywroc pozostaly kontekst
                 POP         {R4 - R11}
+
+                @ Measure time of context switch end
+                @ PUSH {LR}
+                @ BL set_PG13_Low
+                @ POP {LR}
+
                 CPSIE       I               @Enable interrupts
 
                 @; reszte zrobi HW
@@ -66,7 +78,7 @@ nnOsSchedulerLaunch:
            ADD     SP, SP, #4          @; overjump 1 register (R14 - (LR))
            POP     {LR}                @; assign to LR previously assigned PC
            ADD     SP, SP, #4          @; back to defined area of stack
-           CPSIE   I                   @; probably enable interrupt
+           CPSIE   I                   @; enable interrupt
            BX      LR                  
 
 
